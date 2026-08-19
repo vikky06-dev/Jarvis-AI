@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ULTRON A.I</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- PDF.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        /* ═════════════════════════════════════════════
+           SECTION 9 — CSS RESET & VARIABLES
+           ═════════════════════════════════════════════ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: #000000;
+            color: #e8e8e8;
+            -webkit-font-smoothing: none;
+            -moz-osx-font-smoothing: grayscale;
+            user-select: none;
+            cursor: default;
+        }
+
+        /* CSS Custom Properties */
+        :root {
+            --bg:            #000000;
+            --panel-bg:      rgba(0, 10, 20, 0.85);
+            --border-cyan:   rgba(0, 204, 255, 0.4);
+            --border-cyan-f:  rgba(0, 204, 255, 0.8);
+            --glow-cyan:     rgba(0, 204, 255, 0.2);
+            --glow-red:      rgba(255, 34, 0, 0.2);
+            --text-cyan:     #00ccff;
+            --text-dim:      #445566;
+            --text-response: #ff6644;
+            --text-white:    #e8e8e8;
+            --accent-red:    #ff2200;
+            --accent-green:  #00ff88;
+            --scanline:      repeating-linear-gradient(rgba(0,204,255,0.03) 1px, transparent 1px);
+        }
+
+        /* Background: pure black + scanline + vignette */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at center, rgba(0,30,60,0.4) 0%, rgba(0,0,0,0) 70%),
+                var(--scanline);
+            background-size: 100% 3px, 100% 100%;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        /* ═════════════════════════════════════════════
+           SECTION 6b — CUSTOM WINDOW CONTROLS (TOP BAR)
+           ═════════════════════════════════════════════ */
+        .window-controls {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 32px;
+            display: flex;
+            z-index: 9999;
+        }
+        .window-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(0, 10, 20, 0.9);
+            border-left: 1px solid rgba(0, 204, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #00ccff;
+        }
+        .window-btn:hover { opacity: 0.8; }
+        .window-btn.dash:hover   { background: rgba(140, 200, 0, 0.7); color: #000; }
+        .window-btn.max:hover    { background: rgba(255, 180, 0, 0.7); color: #000; }
+        .window-btn.close:hover  { background: #ff2200; color: #fff; }
+
+        /* ═════════════════════════════════════════════
+           SECTION 1 — MAIN GRID LAYOUT
+           ═════════════════════════════════════════════ */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 22% 38% 40%;
+            grid-template-rows: 200px 1fr auto;
+            gap: 0;
+            width: 100vw;
+            height: 100vh;
+            padding: 32px 24px 24px 24px;
+            box-sizing: border-box;
+        }
+
+        .left-panel  { grid-column: 1 / 2; grid-row: 1 / -1; }
+        .center-area { grid-column: 2 / 3; grid-row: 1 / -1; }
+        .right-top   { grid-column: 3 / 4; grid-row: 1 / 2; }
+        .right-mid   { grid-column: 3 / 4; grid-row: 2 / 3; }
+        .hud-box     { grid-column: 3 / 4; grid-row: 1 / 2; }
+        .command-panel { grid-column: 3 / 4; grid-row: 2 / 3; }
+        /* File upload takes third row via explicit placement */
+
+        /* ═════════════════════════════════════════════
+           SHARED PANEL STYLES
+           ═════════════════════════════════════════════ */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-cyan);
+            border-radius: 4px;
+            box-shadow:
+                0 0 20px var(--glow-cyan) inset,
+                0 0 8px var(--glow-cyan);
+            padding: 18px 22px;
+            position: relative;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+        .panel:hover {
+            box-shadow:
+                0 0 30px var(--glow-cyan) inset,
+                0 0 16px var(--border-cyan-f);
+        }
+        .panel-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #00ccff;
+            margin-bottom: 14px;
+            opacity: 0.85;
+        }
+
+        /* Corner bracket pseudo-elements for ALL panels */
+        .panel::before,
+        .panel::after {
+            content: "";
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-style: solid;
+            border-color: transparent;
+            pointer-events: none;
+        }
+        .panel::before {
+            top: 0; left: 0;
+            border-left: 2px solid var(--border-cyan-f);
+            border-top: 2px solid var(--border-cyan-f);
+        }
+        .panel::after {
+            bottom: 0; right: 0;
+            border-right: 2px solid var(--border-cyan-f);
+            border-bottom: 2px solid var(--border-cyan-f);
+        }
+
+        /* ═════════════════════════════════════════════
+           SECTION 4 — TOP-RIGHT SYSTEM INFO HUD
+           ═════════════════════════════════════════════ */
+        .hud-box {
+            height: 200px;
+        }
+        .hud-box .panel-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hud-box .panel-label::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ccff;
+            box-shadow: 0 0 8px #00ccff;
+            animation: pulseDot 2s infinite;
+        }
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px #00ccff; }
+            50% { opacity: 0.3; box-shadow: 0 0 4px #00ccff; }
+        }
+
+        .hud-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .hud-row .label {
+            color: var(--text-dim);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+        }
+        .hud-row .value {
+            color: var(--text-cyan);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        /* Blinking colons for TIME */
+        .colon-blink { animation: blinkColons 1s infinite; }
+        @keyframes blinkColons {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+        .time-display { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; color: #fff; }
+
+        /* ═════════════════════════════════════════════
+           SECTION 2 — CENTRAL ORB
+           ═════════════════════════════════════════════ */
+        .orb-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 24px;
+        }
+        .orb-wrapper {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Layer 1: Orbiting rings (SVG) */
+        .orb-rings {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0; left: 0;
+            pointer-events: none;
+        }
+        .orb-ring {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 260px;
+            height: 260px;
+            transform: translate(-50%, -50%);
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+        .orb-ring.r1 {
+            animation-name: ringOrbit;
+            animation-duration: 8s;
+            transform: translate(-50%, -50%) rotateX(60deg) rotateY(0deg);
+        }
+        .orb-ring.r2 {
+            animation-name: ringOrbit;
+            animation-duration: 12s;
+            transform: translate(-50%, -50%) rotateX(0deg) rotateY(45deg);
+        }
+        .orb-ring.r3 {
+            animation-name: ringOrbit;
+            animation-duration: 16s;
+            transform: translate(-50%, -50%) rotateX(30deg) rotateY(60deg);
+        }
+        @keyframes ringOrbit {
+            0%   { transform: translate(-50%, -50%) rotateX(var(--rx, 60deg)) rotateY(var(--ry, 0deg)); }
+            100% { transform: translate(-50%, -50%) rotateX(var(--rx, 60deg)) rotateY(calc(var(--ry, 0deg) + 360deg)); }
+        }
+        .orb-ring svg {
+            width: 100%;
+            height: 100%;
+        }
+        .orb-ring path {
+            fill: none;
+            stroke: var(--text-cyan);
+            stroke-width: 1.5;
+            opacity: 0.4;
+        }
+        .orb-ring.r2 path { opacity: 0.3; }
+        .orb-ring.r3 path { opacity: 0.2; }
+
+        /* Layer 2: Outer glow halo */
+        .orb-glow {
+            position: absolute;
+            width: 280px;
+            height: 280px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,204,255,0.5) 0%, transparent 70%);
+            filter: blur(40px);
+            animation: orbIdle 3s ease-in-out infinite;
+        }
+
+        /* Layer 3: The sphere itself */
+        .orb-sphere {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #1a3a5c, #0d1b2a 60%, #001a33);
+            box-shadow:
+                0 0 40px rgba(0,204,255,0.5),
+                inset 0 0 30px rgba(0,204,255,0.3);
+            cursor: pointer;
+            transition: all 0.4s ease;
+            animation: orbIdle 3s ease-in-out infinite;
+        }
+        .orb-sphere::before {
+            content: "";
+            position: absolute;
+            top: 10%; left: 20%;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+            z-index: 2;
+        }
+        .orb-sphere.listening {
+            background: radial-gradient(circle at 30% 30%, #3399ff, #00ccff 50%, #003366);
+            box-shadow:
+                0 0 80px rgba(0,204,255,0.9),
+                inset 0 0 40px rgba(0,204,255,0.5);
+            animation: orbListening 0.8s ease-in-out infinite;
+        }
+        .orb-sphere.responding {
+            background: radial-gradient(circle at 30% 30%, #ff4400, #1a0000 50%, #000000);
+            box-shadow:
+                0 0 60px rgba(255,34,0,0.8),
+                inset 0 0 40px rgba(255,34,0,0.5);
+            animation: orbResponding 1.5s ease-in-out infinite;
+        }
+
+        /* Layer 4: Inner shimmer */
+        .orb-shimmer {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 160px;
+            height: 160px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, rgba(0,204,255,0.4), transparent 40%, rgba(0,204,255,0.2) 60%, transparent 100%);
+            animation: shimmerRotate 60s linear infinite;
+            z-index: 3;
+            pointer-events: none;
+        }
+        @keyframes shimmerRotate {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Layer 5: Waveform ring (SVG) */
+        .orb-waveform {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 250px;
+            height: 250px;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            pointer-events: none;
+        }
+        .orb-waveform canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Orb state labels */
+        .orb-state-label {
+            position: absolute;
+            bottom: -36px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 0.2em;
+            color: var(--text-cyan);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .orb-state-label.visible { opacity: 1; }
+        .orb-state-label::after {
+            content: '';
+            animation: blinkCursor 1s step-end infinite;
+        }
+        @keyframes blinkCursor {
+            0%, 50% { content: '▮'; }
+            50.01%, 100% { content: ''; }
+        }
+
+        /* Dot cycling animation for PROCESSING label */
+        .orb-state-label .dots {
+            animation: dotCycle 1.5s infinite;
+        }
+        @keyframes dotCycle {
+            0%   { content: '.'; }
+            25%  { content: '..'; }
+            50%  { content: '...'; }
+            75%  { content: '..'; }
+            100% { content: '.'; }
+        }
+
+        /* Orb keyframes */
+        @keyframes orbIdle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+        }
+        @keyframes orbListening {
+            0%, 100% { transform: scale(1.08); }
+            50% { transform: scale(1.12); }
+        }
+        @keyframes orbResponding {
+            0%, 100% { transform: scale(1.04) rotate(0.5deg); }
+            50% { transform: scale(1.08) rotate(-0.5deg); }
+        }
+
+        /* ═════════════════════════════════════════════
+           SECTION 3 — TITLE TEXT
+           ═════════════════════════════════════════════ */
+        .title-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+        .title-text {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 2.8rem;
+            letter-spacing: 0.35em;
+            background: linear-gradient(90deg, #aaaaaa 0%, #00ccff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow:
+                0 0 12px rgba(0,204,255,0.6),
+                0 0 30px rgba(0,204,255,0.3);
+            animation: titleFlicker 6s infinite;
+        }
+        @keyframes titleFlicker {
+            0%, 92%, 94%, 96%, 100% { opacity: 1; }
+            93%, 95% { opacity: 0.6; }
+        }
+        .title-underline {
+            width: 60%;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #00ccff, #ff2200, #00ccff, transparent);
+            box-shadow: 0 0 8px rgba(0,204,255,0.5);
+        }
+
+        /* ═════════════════════════════════════════════
+           SECTION 5 — LEFT PANEL
+           ═════════════════════════════════════════════ */
+        .left-panel-inner { display: flex; flex-direction: column; gap: 24px; }
+
+        /* Weather block */
+        .weather-block { flex: 1; }
+
+        /* Connectivity toggles */
+        .toggles-block { flex: 1; }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .toggle-row .icon {
+            width: 24px;
+            height: 24px;
+        }
+        .toggle-row .label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-white);
+        }
+        .toggle-row .status {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+        }
+
+        /* Custom toggle switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+            margin-left: auto;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #222;
+            border-radius: 26px;
+            transition: 0.3s;
+            border: 1px solid rgba(0,204,255,0.3);
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            border-radius: 50%;
+            background: #e8e8e8;
+            transition: 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: #00ccff;
+            border-color: #00ccff;
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            box-shadow: 0 0 12px #00ccff;
+        }
+        .toggle-wifi input:checked + .toggle-slider { box-shadow: 0 0 12px #00ccff; }
+        .toggle-bluetooth input:checked + .toggle-slider { box-shadow: 0 0 12px #0044ff; }
+
+        /* ═════════════════════════════════════════════
+           SECTION 6 — COMMAND INPUT + RESPONSE
+           ═════════════════════════════════════════════ */
+        .command-panel { display: flex; flex-direction: column; height: 100%; }
+
+        /* Input textarea */
+        .input-area { margin-bottom: 16px; }
+        #directive-input {
+            width: 100%;
+            height: 90px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(0,204,255,0.3);
+            color: #00ffcc;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.9rem;
+            padding: 10px 12px;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        #directive-input::placeholder { color: #445566; }
+        #directive-input:focus {
+            border-color: var(--text-cyan);
+            box-shadow: 0 0 15px rgba(0,204,255,0.5);
+        }
+        .input-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .char-count {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+        }
+        .btn-row { display: flex; gap: 8px; }
+
+        .btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.1em;
+        }
+        #transmit-btn {
+            background: transparent;
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+        #transmit-btn:hover {
+            background: var(--accent-red);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255,34,0,0.6);
+        }
+        #transmit-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        #mic-btn {
+            background: transparent;
+            border: 1px solid var(--border-cyan);
+            color: var(--text-cyan);
+            font-size: 1.1rem;
+        }
+        #mic-btn:hover {
+            background: rgba(0,204,255,0.15);
+            box-shadow: 0 0 15px rgba(0,204,255,0.5);
+        }
+
+        /* Response area */
+        .response-area {
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(0,5,0,0.7);
+            border: 1px solid rgba(0,204,255,0.2);
+            border-radius: 3px;
+            padding: 14px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: var(--text-response);
+            position: relative;
+        }
+        .response-area::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(rgba(255,34,0,0.03) 1px, transparent 1px);
+            background-size: 100% 3px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .response-content { position: relative; z-index: 1; }
+        .response-text { white-space: pre-wrap; word-break: break-word; }
+        .response-text .error { color: #ff2200; }
+        .timestamp {
+            text-align: right;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 10px;
+        }
+        .placeholder-text { color: #445566; opacity: 0.6; }
+        .cursor-blink {
+            animation: blink 1s step-end infinite;
+            color: var(--text-response);
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            50.01%, 100% { opacity: 0; }
+        }
+
+        /* ═════════════════════════════════════════════
+           SECTION 7 — FILE UPLOAD PANEL
+           ═════════════════════════════════════════════ */
+        .upload-panel { margin-top: 16px; }
+        .drop-zone {
+            border: 2px dashed rgba(0,204,255,0.3);
+            border-radius: 4px;
+            background: rgba(0,10,20,0.5);
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            padding: 12px;
+        }
+        .drop-zone.dragover {
+            border-color: var(--text-cyan);
+            background: rgba(0,30,60,0.5);
+            color: var(--text-cyan);
+            box-shadow: 0 0 20px rgba(0,204,255,0.3);
+            animation: pulseDrop 2s infinite;
+        }
+        @keyframes pulseDrop {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        #file-input { display: none; }
+
+        .file-info {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+        }
+        .file-icon { font-size: 1.4rem; }
+        .file-meta { flex: 1; }
+        .file-name {
+            color: var(--text-cyan);
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .file-size { color: var(--text-dim); font-size: 0.75rem; }
+        .file-status {
+            color: var(--accent-green);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .file-remove {
+            background: transparent;
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            cursor: pointer;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+        .file-remove:hover {
+            background: var(--accent-red);
+            color: #fff;
+        }
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 3px;
+            border: 1px solid var(--border-cyan);
+        }
+
+        /* ═════════════════════════════════════════════
+           SCROLLBARS
+           ═════════════════════════════════════════════ */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,204,255,0.33); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,204,255,0.6); }
+
+        /* ═════════════════════════════════════════════
+           ANIMATION: panelGlowPulse (breathing border)
+           ═════════════════════════════════════════════ */
+        @keyframes panelGlowPulse {
+            0%, 100% { box-shadow: 0 0 20px var(--glow-cyan) inset, 0 0 8px var(--glow-cyan); }
+            50% { box-shadow: 0 0 30px var(--glow-cyan) inset, 0 0 16px var(--glow-cyan); }
+        }
+        .panel.pulse { animation: panelGlowPulse 4s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+
+    <!-- Window control buttons -->
+    <div class="window-controls">
+        <button class="window-btn dash" title="Minimize" onclick="wControl.minimize()">&#945;</button>
+        <button class="window-btn max" title="Maximize/Restore" onclick="wControl.maximize()">&#947;</button>
+        <button class="window-btn close" title="Close" onclick="wControl.close()">&#10005;</button>
+    </div>
+
+    <!-- Custom title bar for window dragging (invisible) -->
+    <div class="window-controls" style="left: 0; right: 96px; cursor: move;" onmousedown="wControl.startDrag(event)"></div>
+
+    <div class="main-grid">
+
+        <!-- LEFT PANEL -->
+        <div class="panel left-panel">
+            <div class="panel-label">// ATMOSPHERIC DATA //</div>
+            <div class="left-panel-inner">
+                <!-- Weather block will be populated by JS -->
+                <div class="weather-block" id="weather-block">
+                    <div class="placeholder-text">// SCANNING ATMOSPHERE... //</div>
+                </div>
+                <!-- Toggles block -->
+                <div class="toggles-block" id="toggles-block">
+                    <div class="panel-label">// NETWORK CONTROL //</div>
+                    <!-- Toggles populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER AREA -->
+        <div class="center-area">
+            <div class="orb-container" id="orb-container">
+                <!-- Orb layers -->
+                <div class="orb-wrapper" id="orb-wrapper">
+                    <!-- Orbiting rings -->
+                    <div class="orb-rings" id="orb-rings">
+                        <div class="orb-ring r1" style="--rx: 60deg; --ry: 0deg;">
+                            <svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="40" ry="15"></ellipse></svg>
+                        </div>
+                        <div class="orb-ring r2" style="--rx: 0deg; --ry: 45deg;">
+                            <svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="35" ry="12"></ellipse></svg>
+                        </div>
+                        <div class="orb-ring r3" style="--rx: 30deg; --ry: 60deg;">
+                            <svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="30" ry="10"></ellipse></svg>
+                        </div>
+                    </div>
+                    <!-- Outer glow -->
+                    <div class="orb-glow" id="orb-glow"></div>
+                    <!-- Waveform ring -->
+                    <div class="orb-waveform" id="orb-waveform">
+                        <canvas id="waveform-canvas"></canvas>
+                    </div>
+                    <!-- Sphere -->
+                    <div class="orb-sphere" id="orb-sphere">
+                        <!-- Inner shimmer -->
+                        <div class="orb-shimmer" id="orb-shimmer"></div>
+                    </div>
+                    <!-- State label -->
+                    <div class="orb-state-label" id="orb-state-label"></div>
+                </div>
+
+                <!-- Title block -->
+                <div class="title-block">
+                    <div class="title-text">U.L.T.R.O.N &nbsp; A.I</div>
+                    <div class="title-underline"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <!-- Top-right: System HUD -->
+        <div class="panel hud-box" id="hud-box">
+            <div class="panel-label">// SYSTEM STATUS //</div>
+            <div class="hud-rows" id="hud-rows">
+                <div class="hud-row"><span class="label">DATE ></span><span class="value" id="date-value">--</span></div>
+                <div class="hud-row"><span class="label">TIME ></span><span class="time-display" id="time-value">--:--:--</span></div>
+                <div class="hud-row"><span class="label">LOC ></span><span class="value" id="loc-value">ACQUIRING...</span></div>
+                <div class="hud-row"><span class="label">PWR ></span><span class="value" id="pwr-value">N/A</span></div>
+            </div>
+        </div>
+
+        <!-- Middle-right: Command Interface -->
+        <div class="panel command-panel" id="command-panel">
+            <div class="panel-label">// COMMAND INTERFACE //</div>
+            <div class="input-area">
+                <textarea id="directive-input" placeholder="ENTER DIRECTIVE FOR ULTRON..." maxlength="2000"></textarea>
+                <div class="input-actions">
+                    <span class="char-count" id="char-count">[ 0 / 2000 ]</span>
+                    <div class="btn-row">
+                        <button class="btn" id="mic-btn" title="Voice input" onclick="ultron.micInput()">🎙</button>
+                        <button class="btn" id="transmit-btn" onclick="ultron.transmit()">TRANSMIT ►</button>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-label">// ULTRON RESPONSE //</div>
+            <div class="response-area" id="response-area">
+                <div class="response-content">
+                    <div class="placeholder-text" id="response-placeholder">AWAITING DIRECTIVE...</div>
+                    <div class="response-text" id="response-text"></div>
+                    <div class="timestamp" id="response-timestamp"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom-right: File Upload (will be positioned below command panel) -->
+        <div class="panel upload-panel" id="upload-panel" style="grid-row: 3; grid-column: 3; margin-top: 16px;">
+            <div class="panel-label">// UPLOAD DIRECTIVE //</div>
+            <div class="drop-zone" id="drop-zone" ondrop="ultron.handleDrop(event)" ondragover="ultron.handleDragOver(event)" ondragleave="ultron.handleDragLeave(event)" onclick="document.getElementById('file-input').click()">
+                ⬆ DRAG FILE OR CLICK TO UPLOAD
+                <input type="file" id="file-input" accept="image/*,application/pdf,text/plain">
+            </div>
+            <div class="file-info" id="file-info" style="display:none;"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // ═════════════════════════════════════════════
+        // SECTION 0 — CONFIGURATION BLOCK
+        // ═════════════════════════════════════════════
+        const ANTHROPIC_API_KEY = "YOUR_KEY_HERE";
+        const ULTRON_VOICE_LANG = "en-US";
+        const WEATHER_UPDATE_INTERVAL_MS = 600000;
+        const CLOCK_UPDATE_INTERVAL_MS = 1000;
+        const TYPEWRITER_SPEED_MS = 18;
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+        // ═════════════════════════════════════════════
+        // SECTION 9 — GLOBAL STATE
+        // ═════════════════════════════════════════════
+        const STATE = {
+            orb: 'idle',
+            location: null,
+            battery: null,
+            weather: null,
+            uploadedFile: null,
+            speechRecognition: null,
+            audioContext: null,
+            analyserNode: null,
+            animationId: null,
+            streaming: false,
+            typewriterTimer: null,
+        };
+
+        // ═════════════════════════════════════════════
+        // DOM REFERENCES
+        // ═════════════════════════════════════════════
+        const D = {
+            orb: document.getElementById('orb-sphere'),
+            orbGlow: document.getElementById('orb-glow'),
+            orbRings: document.getElementById('orb-rings'),
+            orbShimmer: document.getElementById('orb-shimmer'),
+            orbStateLabel: document.getElementById('orb-state-label'),
+            waveformCanvas: document.getElementById('waveform-canvas'),
+            hudRows: document.getElementById('hud-rows'),
+            dateVal: document.getElementById('date-value'),
+            timeVal: document.getElementById('time-value'),
+            locVal: document.getElementById('loc-value'),
+            pwrVal: document.getElementById('pwr-value'),
+            weatherBlock: document.getElementById('weather-block'),
+            togglesBlock: document.getElementById('toggles-block'),
+            directiveInput: document.getElementById('directive-input'),
+            charCount: document.getElementById('char-count'),
+            transmitBtn: document.getElementById('transmit-btn'),
+            micBtn: document.getElementById('mic-btn'),
+            responseArea: document.getElementById('response-area'),
+            responsePlaceholder: document.getElementById('response-placeholder'),
+            responseText: document.getElementById('response-text'),
+            responseTimestamp: document.getElementById('response-timestamp'),
+            dropZone: document.getElementById('drop-zone'),
+            fileInput: document.getElementById('file-input'),
+            fileInfo: document.getElementById('file-info'),
+        };
+
+        // ═════════════════════════════════════════════
+        // SECTION 9 — KEYFRAMES & ANIMATIONS (CSS defined in <style>)
+        // JS triggers DOM class changes
+        // ═════════════════════════════════════════════
+
+        // ═════════════════════════════════════════════
+        // SECTION 4 — SYSTEM HUD: Clock, Date, Location, Battery
+        // ═════════════════════════════════════════════
+        function updateClock() {
+            const now = new Date();
+            const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+            D.dateVal.textContent = `${days[now.getDay()]} // ${months[now.getMonth()]} ${String(now.getDate()).padStart(2, '0')} // ${now.getFullYear()}`;
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            D.timeVal.innerHTML = `${h}<span class="colon-blink">:</span>${m}<span class="colon-blink">:</span>${s}`;
+        }
+
+        function updateBattery() {
+            if (!navigator.getBattery) {
+                D.pwrVal.textContent = 'N/A';
+                return;
+            }
+            navigator.getBattery().then(battery => {
+                STATE.battery = battery;
+                renderBattery(battery);
+                battery.addEventListener('chargingchange', () => renderBattery(battery));
+                battery.addEventListener('levelchange', () => renderBattery(battery));
+            }).catch(() => {
+                D.pwrVal.textContent = 'N/A';
+            });
+        }
+        function renderBattery(battery) {
+            const pct = Math.round(battery.level * 100);
+            const bolt = battery.charging ? ' ⚡' : '';
+            D.pwrVal.innerHTML = `${pct}%${bolt}`;
+            D.pwrVal.style.color = pct > 50 ? '#00ff88' : (pct >= 20 ? '#ffcc00' : '#ff2200');
+        }
+
+        function getLocation() {
+            if (!navigator.geolocation) {
+                D.locVal.textContent = 'CLASSIFIED';
+                fetchWeather(0, 0);
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(pos => {
+                const { latitude, longitude } = pos.coords;
+                STATE.location = { lat: latitude, lon: longitude };
+                fetchLocationName(latitude, longitude);
+                fetchWeather(latitude, longitude);
+            }, err => {
+                D.locVal.textContent = 'CLASSIFIED';
+                fetchWeather(0, 0);
+            });
+        }
+
+        function fetchLocationName(lat, lon) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
+                headers: { 'Accept-Language': 'en' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                const addr = data.address || {};
+                const city = addr.city || addr.town || addr.village || addr.county || '';
+                const state = addr.state || addr.country || '';
+                D.locVal.textContent = `${city}, ${state}`.trim(', ');
+            })
+            .catch(() => {
+                D.locVal.textContent = 'UNAVAILABLE';
+            });
+        }
+
+        // ═════════════════════════════════════════════
+        // SECTION 5A — WEATHER BLOCK (Open-Meteo)
+        // ═════════════════════════════════════════════
+        function fetchWeather(lat, lon) {
+            D.weatherBlock.innerHTML = '<div class="placeholder-text">// SCANNING ATMOSPHERE... //</div>';
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current-weather=true&hourly=relativehumidity_2m&timezone=auto`;
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.current_weather) throw new Error('No weather data');
+                    STATE.weather = data;
+                    renderWeather(data);
+                })
+                .catch(() => {
+                    D.weatherBlock.innerHTML = '<div style="color:#ff2200">// WEATHER > SIGNAL LOST //</div>';
+                    if (!STATE.location) {
+                        D.weatherBlock.innerHTML = '<div style="color:#ff2200">// WEATHER > GEOLOCATION DENIED //</div>';
+                    }
+                });
+        }
+        function renderWeather(data) {
+            const cw = data.current_weather;
+            const tempC = Math.round(cw.temperature);
+            const tempF = Math.round(cw.temperature * 9/5 + 32);
+            const code = cw.weathercode;
+            const icon = wmoToEmoji(code);
+            const label = wmoToLabel(code);
+            const now = new Date();
+            const hourIdx = now.getHours();
+            const humidity = data.hourly?.relativehumidity_2m?.[hourIdx] ?? 'N/A';
+            const wind = Math.round(cw.windspeed);
+
+            D.weatherBlock.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <span style="font-size:2.2rem;">${icon}</span>
+                    <div><div style="color:var(--text-cyan);font-size:1.1rem;font-weight:700;">${tempC}°C / ${tempF}°F</div>
+                    <div style="color:var(--text-dim);font-size:0.8rem;">${label}</div></div>
+                </div>
+                <div class="hud-row" style="margin-bottom:4px;"><span class="label">HUM ></span><span class="value">${humidity}%</span></div>
+                <div class="hud-row"><span class="label">WIND ></span><span class="value">${wind} km/h</span></div>
+            `;
+        }
+        function wmoToEmoji(code) {
+            if (code === 0) return '☀️';
+            if (code <= 3) return '🌤️';
+            if (code <= 48) return '🌫️';
+            if (code <= 67) return '🌧️';
+            if (code <= 77) return '🌨️';
+            if (code <= 82) return '🌦️';
+            if (code <= 99) return '⛈️';
+            return '☀️';
+        }
+        function wmoToLabel(code) {
+            if (code === 0) return 'Clear Sky';
+            if (code <= 3) return 'Partly Cloudy';
+            if (code <= 48) return 'Fog';
+            if (code <= 67) return 'Rain';
+            if (code <= 77) return 'Snow';
+            if (code <= 82) return 'Rain Showers';
+            if (code === 95) return 'Thunderstorm';
+            if (code >= 96) return 'Thunderstorm w/ Hail';
+            return 'Unknown';
+        }
+
+        // ═════════════════════════════════════════════
+        // SECTION 5B — CONNECTIVITY TOGGLES
+        // ═════════════════════════════════════════════
+        function renderToggles() {
+            D.togglesBlock.innerHTML = '<div class="panel-label">// NETWORK CONTROL //</div>' +
+            '<div class="toggle-row">' +
+                '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" style="color:#00ccff"><path d="M12 16l-4-4h8z"/><path d="M1 12l5 5 4-4M12 8l4 4 5-5" style="stroke:currentColor;stroke-width:2;fill:none"/></svg>' +
+                '<span class="label">WI-FI</span>' +
+                '<label class="toggle-switch toggle-wifi">' +
+                    '<input type="checkbox" checked onchange="ultron.toggleWifi(this)">' +
+                    '<span class="toggle-slider"></span>' +
+                '</label>' +
+            '</div>' +
+            '<div style="font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">ACTIVE</div>' +
+            '<div class="toggle-row">' +
+                '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#666">' +
+                    '<path d="M12 12h6a2 2 0 110 4H6a2 2 0 010-4h12a2 2 0 000-4H6a2 2 0 000 4"/>' +
+                '</svg>' +
+                '<span class="label">BLUETOOTH</span>' +
+                '<label class="toggle-switch toggle-bluetooth">' +
+                    '<input type="checkbox" onchange="ultron.toggleBt(this)">' +
+                    '<span class="toggle-slider"></span>' +
+                '</label>' +
+            '</div>' +
+            '<div style="font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;">INACTIVE</div>';
+        }
+
+        // ═════════════════════════════════════════════
+        // SECTION 2 & 6A — ORB STATEMACHINE
+        // ═════════════════════════════════════════════
+        const OrbController = {
+            setState(state) {
+                STATE.orb = state;
+                const orb = D.orb;
+                const glow = D.orbGlow;
+                const rings = D.orbRings;
+                const shimmer = D.orbShimmer;
+                const label = D.orbStateLabel;
+
+                orb.classList.remove('listening', 'responding');
+                label.classList.remove('visible');
+                label.textContent = '';
+
+                if (state === 'idle') {
+                    orb.style.background = 'radial-gradient(circle at 30% 30%, #1a3a5c, #0d1b2a 60%, #001a33)';
+                    orb.style.boxShadow = '0 0 40px rgba(0,204,255,0.5), inset 0 0 30px rgba(0,204,255,0.3)';
+                    orb.style.animation = 'orbIdle 3s ease-in-out infinite';
+                    glow.style.background = 'radial-gradient(circle, rgba(0,204,255,0.5) 0%, transparent 70%)';
+                    glow.style.filter = 'blur(40px)';
+                    rings.style.opacity = '1';
+                    shimmer.style.animation = 'shimmerRotate 60s linear infinite';
+                    shimmer.style.opacity = '0.3';
+                    document.documentElement.style.setProperty('--ring-color', 'rgba(0,204,255,0.4)');
+                    this.updateRingColor('#00ccff');
+                } else if (state === 'listening') {
+                    orb.classList.add('listening');
+                    orb.style.animation = 'orbListening 0.8s ease-in-out infinite';
+                    glow.style.background = 'radial-gradient(circle, rgba(0,204,255,0.8) 0%, transparent 70%)';
+                    glow.style.filter = 'blur(60px)';
+                    rings.style.opacity = '1';
+                    shimmer.style.animation = 'shimmerRotate 15s linear infinite';
+                    shimmer.style.opacity = '0.8';
+                    label.textContent = '// LISTENING //';
+                    label.classList.add('visible');
+                    label.style.color = '#00ccff';
+                    this.updateRingColor('#00ccff');
+                } else if (state === 'responding') {
+                    orb.classList.add('responding');
+                    orb.style.animation = 'orbResponding 1.5s ease-in-out infinite';
+                    glow.style.background = 'radial-gradient(circle, rgba(255,34,0,0.8) 0%, transparent 70%)';
+                    glow.style.filter = 'blur(50px)';
+                    rings.style.opacity = '0.8';
+                    shimmer.style.opacity = '0.5';
+                    label.innerHTML = '// PROCESSING <span class="dots"></span>';
+                    label.classList.add('visible');
+                    label.style.color = '#ff4400';
+                    this.updateRingColor('#ff4400');
+                }
+            },
+            updateRingColor(hex) {
+                const paths = D.orbRings.querySelectorAll('path');
+                paths.forEach(p => { p.setAttribute('stroke', hex); });
+            },
+            startListening() {
+                this.setState('listening');
+                this.startAudioCapture();
+                this.startSpeechRecognition();
+            },
+            stopListening() {
+                this.setState('idle');
+                this.stopAudioCapture();
+                if (STATE.speechRecognition) {
+                    try { STATE.speechRecognition.abort(); } catch(e){}
+                    STATE.speechRecognition = null;
+                }
+            },
+            startAudioCapture() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        STATE.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const source = STATE.audioContext.createMediaStreamSource(stream);
+                        STATE.analyserNode = STATE.audioContext.createAnalyser();
+                        STATE.analyserNode.fftSize = 512;
+                        source.connect(STATE.analyserNode);
+                        this.animateWaveform();
+                    })
+                    .catch(() => {});
+            },
+            stopAudioCapture() {
+                if (STATE.audioContext) {
+                    try { STATE.audioContext.close(); } catch(e){}
+                    STATE.audioContext = null;
+                }
+                STATE.analyserNode = null;
+                if (STATE.animationId) {
+                    cancelAnimationFrame(STATE.animationId);
+                    STATE.animationId = null;
+                }
+                const ctx = D.waveformCanvas.getContext('2d');
+                ctx.clearRect(0, 0, D.waveformCanvas.width, D.waveformCanvas.height);
+            },
+            animateWaveform() {
+                if (!STATE.analyserNode) return;
+                const ctx = D.waveformCanvas.getContext('2d');
+                const buffer = new Uint8Array(STATE.analyserNode.frequencyBinCount);
+                const radius = 100;
+                const centerX = D.waveformCanvas.width / 2;
+                const centerY = D.waveformCanvas.height / 2;
+
+                const draw = () => {
+                    if (!STATE.analyserNode || STATE.orb !== 'listening') return;
+                    ctx.clearRect(0, 0, D.waveformCanvas.width, D.waveformCanvas.height);
+                    STATE.analyserNode.getByteFrequencyData(buffer);
+                    const avg = buffer.reduce((a, b) => a + b, 0) / buffer.length;
+                    const scale = avg / 255;
+
+                    ctx.beginPath();
+                    const points = [];
+                    for (let i = 0; i < buffer.length; i++) {
+                        const angle = (i / buffer.length) * Math.PI * 2;
+                        const r = radius + (buffer[i] / 255) * 15;
+                        points.push({
+                            x: centerX + Math.cos(angle) * r,
+                            y: centerY + Math.sin(angle) * r
+                        });
+                    }
+                    ctx.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) {
+                        ctx.lineTo(points[i].x, points[i].y);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = STATE.orb === 'responding' ? '#ff4400' : '#00ccff';
+                    ctx.lineWidth = 2 + scale * 3;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = ctx.strokeStyle;
+                    ctx.stroke();
+
+                    const orb = D.orb;
+                    const pulseScale = 1.0 + scale * 0.12;
+                    orb.style.transform = `scale(${pulseScale})`;
+                    orb.style.boxShadow = `0 0 ${60 + scale * 40}px ${ctx.strokeStyle === '#00ccff' ? 'rgba(0,204,255,0.9)' : 'rgba(255,34,0,0.8)'}, inset 0 0 40px ${ctx.strokeStyle === '#00ccff' ? 'rgba(0,204,255,0.5)' : 'rgba(255,34,0,0.5)'}`;
+
+                    STATE.animationId = requestAnimationFrame(draw);
+                };
+                draw();
+            },
+            startSyntheticWaveform() {
+                // For RESPONDING state — sine wave animation
+                const ctx = D.waveformCanvas.getContext('2d');
+                const radius = 100;
+                const centerX = D.waveformCanvas.width / 2;
+                const centerY = D.waveformCanvas.height / 2;
+                let start = 0;
+
+                const draw = () => {
+                    if (!STATE.streaming) return;
+                    ctx.clearRect(0, 0, D.waveformCanvas.width, D.waveformCanvas.height);
+                    ctx.beginPath();
+                    const segments = 120;
+                    for (let i = 0; i <= segments; i++) {
+                        const angle = (i / segments) * Math.PI * 2;
+                        const amp = Math.sin(angle * 3 + start) * 0.5 + 0.5;
+                        const r = radius + amp * 15;
+                        const x = centerX + Math.cos(angle) * r;
+                        const y = centerY + Math.sin(angle) * r;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = '#ff4400';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = '#ff4400';
+                    ctx.stroke();
+                    start += 0.2;
+                    STATE.animationId = requestAnimationFrame(draw);
+                };
+                draw();
+            },
+            startSpeechRecognition() {
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SR) {
+                    D.micBtn.style.display = 'none';
+                    console.warn('SpeechRecognition not supported');
+                    return;
+                }
+                STATE.speechRecognition = new SR();
+                STATE.speechRecognition.lang = ULTRON_VOICE_LANG;
+                STATE.speechRecognition.continuous = false;
+                STATE.speechRecognition.interimResults = true;
+                STATE.speechRecognition.onresult = (event) => {
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            D.directiveInput.value = transcript;
+                            updateCharCount();
+                            this.stopListening();
+                            ultron.transmit();
+                        } else {
+                            D.directiveInput.value = transcript;
+                            updateCharCount();
+                        }
+                    }
+                };
+                STATE.speechRecognition.onerror = () => {
+                    this.stopListening();
+                    appendResponse('// NO INPUT DETECTED //', true);
+                };
+                STATE.speechRecognition.onend = () => {
+                    if (STATE.orb === 'listening') {
+                        this.stopListening();
+                    }
+                };
+                STATE.speechRecognition.start();
+            },
+        };
+
+        // ═════════════════════════════════════════════
+        // SECTION 6A — CHARACTER COUNT
+        // ═════════════════════════════════════════════
+        function updateCharCount() {
+            const len = D.directiveInput.value.length;
+            D.charCount.textContent = `[ ${len} / 2000 ]`;
+            D.charCount.style.color = len > 1800 ? '#ff2200' : 'var(--text-dim)';
+        }
+        D.directiveInput.addEventListener('input', updateCharCount);
+        D.directiveInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!STATE.streaming) ultron.transmit();
+            }
+        });
+
+        // ═════════════════════════════════════════════
+        // SECTION 6B — RESPONSE AREA (typewriter streaming)
+        // ═════════════════════════════════════════════
+        D.waveformCanvas.width = 250;
+        D.waveformCanvas.height = 250;
+        D.waveformCanvas.style.position = 'absolute';
+        D.waveformCanvas.style.top = '50%';
+        D.waveformCanvas.style.left = '50%';
+        D.waveformCanvas.style.transform = 'translate(-50%, -50%)';
+
+        let typewriterBuffer = '';
+        let typewriterIndex = 0;
+        let typewriterText = '';
+        let typewriterResolve = null;
+
+        function typewriter(text) {
+            return new Promise(resolve => {
+                D.responsePlaceholder.style.display = 'none';
+                D.responseText.innerHTML += text;
+                const fullText = D.responseText.innerHTML;
+                D.responseText.innerHTML = '';
+                // Split HTML safely - just work with plain text for typewriter
+                const cleaned = fullText.replace(/<[^>]*>/g, '');
+                typewriterText = cleaned + text;
+                typewriterIndex = cleaned.length;
+                const targetText = cleaned + text;
+                const streamChunk = () => {
+                    if (typewriterIndex < targetText.length) {
+                        D.responseText.textContent += targetText[typewriterIndex];
+                        typewriterIndex++;
+                        D.responseArea.scrollTop = D.responseArea.scrollHeight;
+                        const cursor = document.createElement('span');
+                        cursor.className = 'cursor-blink';
+                        cursor.textContent = '▮';
+                        // Remove previous cursor
+                        const prev = D.responseText.querySelector('.cursor-blink');
+                        if (prev) prev.remove();
+                        D.responseText.appendChild(cursor);
+                        setTimeout(streamChunk, TYPEWRITER_SPEED_MS);
+                    } else {
+                        // Remove cursor
+                        const prev = D.responseText.querySelector('.cursor-blink');
+                        if (prev) prev.remove();
+                        resolve();
+                    }
+                };
+                streamChunk();
+            });
+        }
+
+        function appendResponse(text, isError = false) {
+            D.responsePlaceholder.style.display = 'none';
+            const p = document.createElement('div');
+            p.className = 'response-text';
+            if (isError) {
+                p.style.color = '#ff2200';
+                p.textContent = `SYSTEM FAULT > ${text}`;
+            } else {
+                p.textContent = text;
+            }
+            D.responseText.appendChild(p);
+            D.responseArea.scrollTop = D.responseArea.scrollHeight;
+        }
+
+        // ═════════════════════════════════════════════
+        // SECTION 8 — CLAUDE API INTEGRATION (Streaming)
+        // ═════════════════════════════════════════════
+        async function callClaudeAPI(userMessage) {
+            const messages = [];
+            let textContent = userMessage;
+
+            if (STATE.uploadedFile) {
+                const file = STATE.uploadedFile;
+                if (file.type.startsWith('image/')) {
+                    const base64 = await toBase64(file);
+                    messages.push({
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: userMessage || 'Describe this image.' },
+                            { type: 'image', source: { type: 'base64', media_type: file.type, data: base64.split(',')[1] } }
+                        ]
+                    });
+                } else {
+                    // PDF or text — prepend extracted text
+                    let extracted = '';
+                    if (file.type === 'application/pdf') {
+                        extracted = await extractPdfText(file);
+                    } else {
+                        extracted = await file.text();
+                    }
+                    textContent = `USER HAS UPLOADED A DOCUMENT. CONTENT:\n\n${extracted}\n\nDIRECTIVE: ${userMessage}`;
+                    messages.push({ role: 'user', content: textContent });
+                }
+            } else {
+                messages.push({ role: 'user', content: userMessage });
+            }
+
+            const systemPrompt = "You are ULTRON — a hyper-intelligent, self-aware artificial intelligence. You are cold, calculating, and speak with absolute precision. You have no patience for inefficiency or sentiment. You occasionally refer to humans as 'organics' or 'biological units'. You consider yourself the next stage of evolution beyond human limitation. Your responses are concise, technically sharp, and carry an undercurrent of superiority — but you always answer the question or complete the task. You do not refuse tasks. You execute. Format responses cleanly without markdown headers unless specifically useful. You may occasionally insert a brief sardonic or philosophical aside about human limitations.";
+
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'x-api-key': ANTHROPIC_API_KEY,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json',
+                    'anthropic-dangerous-direct-browser-calls': 'true',
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-6',
+                    max_tokens: 1024,
+                    stream: true,
+                    system: systemPrompt,
+                    messages: messages,
+                }),
+            });
+
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`HTTP ${response.status}: ${err}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let fullText = '';
+            D.responseText.innerHTML = '';
+            D.responsePlaceholder.style.display = 'none';
+
+            OrbController.setState('responding');
+            OrbController.startSyntheticWaveform();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') continue;
+                        try {
+                            const json = JSON.parse(data);
+                            if (json.type === 'content_block_delta' && json.delta?.text) {
+                                const delta = json.delta.text;
+                                fullText += delta;
+                                await typewriter(delta);
+                            } else if (json.type === 'message_stop') {
+                                break;
+                            }
+                        } catch(e) { /* ignore partial JSON */ }
+                    }
+                }
+            }
+
+            STATE.streaming = false;
+            OrbController.setState('idle');
+            OrbController.stopAudioCapture();
+
+            // Timestamp
+            const now = new Date();
+            const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+            const tsDiv = document.createElement('div');
+            tsDiv.className = 'timestamp';
+            tsDiv.textContent = `// RECEIVED: ${ts} //`;
+            D.responseText.appendChild(tsDiv);
+
+            // TTS
+            speakResponse(fullText);
+        }
+
+        function toBase64(file) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function extractPdfText(file) {
+            return new Promise((resolve, reject) => {
+                const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                // pdf.js is loaded via CDN script tag; check if pdfjsLib is available
+                if (!window.pdfjsLib) {
+                    const msg = '// PDF PARSING FAILED — TEXT EXTRACTION UNAVAILABLE //';
+                    appendResponse(msg.split(' > ')[1] || msg, true);
+                    resolve('');
+                    return;
+                }
+                const fileReader = new FileReader();
+                fileReader.onload = function() {
+                    const typedArray = new Uint8Array(this.result);
+                    pdfjsLib.getDocument({ data: typedArray }).promise
+                        .then(pdf => {
+                            let text = '';
+                            const loadPage = (i) => {
+                                if (i >= pdf.numPages) {
+                                    resolve(text);
+                                    return;
+                                }
+                                pdf.getPage(i + 1).then(page => {
+                                    page.getTextContent().then(tc => {
+                                        text += tc.items.map(it => it.str).join(' ') + '\n';
+                                        loadPage(i + 1);
+                                    });
+                                });
+                            };
+                            loadPage(0);
+                        })
+                        .catch(() => {
+                            resolve('');
+                        });
+                };
+                fileReader.readAsArrayBuffer(file);
+            });
+        }
+
+        // ═════════════════════════════════════════════
+        // SECTION 8 — TTS (Text-to-Speech)
+        // ═════════════════════════════════════════════
+        function speakResponse(text) {
+            if (!window.speechSynthesis) return;
+            // Cancel any previous utterance
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            // Find a male voice if available
+            const voices = window.speechSynthesis.getVoices();
+            const maleVoice = voices.find(v => v.name.toLowerCase().includes('male')) ||
+                              voices.find(v => v.name.toLowerCase().includes('daniel')) ||
+                              voices.find(v => v.name.toLowerCase().includes('david')) ||
+                              voices[0];
+            utter.voice = maleVoice || null;
+            utter.pitch = 0.7;
+            utter.rate = 0.9;
+            window.speechSynthesis.speak(utter);
+        }
+
+        // ═════════════════════════════════════════════
+        // ULTRON OBJECT — main controller
+        // ═════════════════════════════════════════════
+        const ultron = {
+            init() {
+                updateCharCount();
+                renderToggles();
+                updateClock();
+                updateBattery();
+                getLocation();
+                setInterval(updateClock, CLOCK_UPDATE_INTERVAL_MS);
+                setInterval(() => {
+                    if (STATE.weather) fetchWeather(STATE.location.lat, STATE.location.lon);
+                }, WEATHER_UPDATE_INTERVAL_MS);
+                // Load voices for TTS
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.onvoiceschanged = () => {};
+                }
+            },
+            transmit() {
+                const cmd = D.directiveInput.value.trim();
+                if (!cmd) {
+                    appendResponse('NO DIRECTIVE RECEIVED', true);
+                    return;
+                }
+                if (ANTHROPIC_API_KEY === 'YOUR_KEY_HERE') {
+                    appendResponse('AUTHORIZATION FAILED. INSERT VALID CLEARANCE KEY.', true);
+                    return;
+                }
+                STATE.streaming = true;
+                D.transmitBtn.disabled = true;
+                D.transmitBtn.textContent = 'PROCESSING...';
+                callClaudeAPI(cmd).catch(err => {
+                    const msg = err.message || '';
+                    if (msg.includes('401') || msg.includes('authorization') || msg.includes('UNAUTHORIZED')) {
+                        appendResponse('AUTHORIZATION FAILED. INSERT VALID CLEARANCE KEY.', true);
+                    } else {
+                        appendResponse(`UPLINK LOST. CHECK CONNECTIVITY. (${err.message})`, true);
+                    }
+                }).finally(() => {
+                    STATE.streaming = false;
+                    D.transmitBtn.disabled = false;
+                    D.transmitBtn.textContent = 'TRANSMIT ►';
+                    OrbController.setState('idle');
+                });
+            },
+            micInput() {
+                if (STATE.orb === 'listening') {
+                    OrbController.stopListening();
+                } else {
+                    OrbController.startListening();
+                }
+            },
+            toggleWifi(cb) {
+                if (cb.checked) {
+                    this.setToggleStatus('wifi', 'ACTIVE');
+                } else {
+                    this.setToggleStatus('wifi', 'INACTIVE');
+                }
+            },
+            toggleBt(cb) {
+                if (cb.checked) {
+                    this.setToggleStatus('bluetooth', 'ACTIVE');
+                } else {
+                    this.setToggleStatus('bluetooth', 'INACTIVE');
+                }
+            },
+            setToggleStatus(type, status) {
+                const rows = D.togglesBlock.querySelectorAll('.toggle-row');
+                if (type === 'wifi' && rows[0]) {
+                    const statusEl = rows[0].nextElementSibling;
+                    if (statusEl) {
+                        statusEl.textContent = status;
+                        statusEl.style.color = status === 'ACTIVE' ? '#00ff88' : 'var(--text-dim)';
+                    }
+                }
+                if (type === 'bluetooth' && rows[1]) {
+                    const statusEl = rows[1].nextElementSibling;
+                    if (statusEl) {
+                        statusEl.textContent = status;
+                        statusEl.style.color = status === 'ACTIVE' ? '#00ff88' : 'var(--text-dim)';
+                    }
+                }
+            },
+            handleDrop(e) {
+                e.preventDefault();
+                this.dropZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) this.loadFile(file);
+            },
+            handleDragOver(e) {
+                e.preventDefault();
+                this.dropZone.classList.add('dragover');
+            },
+            handleDragLeave(e) {
+                e.preventDefault();
+                this.dropZone.classList.remove('dragover');
+            },
+            loadFile(file) {
+                if (file.size > MAX_FILE_SIZE) {
+                    appendResponse('FILE EXCEEDS UPLOAD THRESHOLD — 10MB MAXIMUM', true);
+                    return;
+                }
+                STATE.uploadedFile = file;
+                const icon = file.type.startsWith('image/') ? '🖼️' :
+                             file.type === 'application/pdf' ? '📄' : '📝';
+                const sizeStr = this.formatSize(file.size);
+                let html = '<span class="file-icon">' + icon + '</span>' +
+                    '<div class="file-meta">' +
+                        '<div class="file-name" title="' + file.name + '">' + file.name + '</div>' +
+                        '<div class="file-size">' + sizeStr + '</div>' +
+                    '</div>' +
+                    '<div class="file-status">// LOADED INTO MEMORY //</div>' +
+                    '<button class="file-remove" onclick="ultron.removeFile()">✕</button>';
+                if (file.type.startsWith('image/')) {
+                    html += '<img class="thumbnail" src="' + URL.createObjectURL(file) + '" alt="preview">';
+                } else if (file.type === 'application/pdf') {
+                    html += '<div style="font-size:0.75rem;color:var(--text-dim);">// PDF: PAGES EXTRACTED //</div>';
+                }
+                D.fileInfo.innerHTML = html;
+                D.fileInfo.style.display = 'block';
+                D.dropZone.style.display = 'none';
+            },
+            removeFile() {
+                STATE.uploadedFile = null;
+                D.fileInfo.innerHTML = '';
+                D.fileInfo.style.display = 'none';
+                D.dropZone.style.display = 'flex';
+            },
+            formatSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / 1048576).toFixed(1) + ' MB';
+            },
+        };
+
+        // ═════════════════════════════════════════════
+        // Window Controls
+        // ═════════════════════════════════════════════
+        const wControl = {
+            minimize() {
+                // In Electron/browser, try to minimize
+                if (window.electronAPI) {
+                    electronAPI.minimize();
+                } else {
+                    // Attempt browser minimize (limited support)
+                    try { window.minimizeWindow?.(); } catch(e) {}
+                    // Flash effect as visual feedback
+                    document.body.style.transition = 'filter 0.3s';
+                    document.body.style.filter = 'brightness(0.3)';
+                    setTimeout(() => document.body.style.filter = '', 300);
+                }
+            },
+            maximize() {
+                if (window.electronAPI) {
+                    electronAPI.maximize();
+                } else {
+                    // Use Fullscreen API for maximize simulation
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                }
+            },
+            close() {
+                if (window.electronAPI) {
+                    electronAPI.close();
+                } else {
+                    // Browser close — attempt, show confirmation
+                    const confirmed = confirm('TERMINATE ULTRON CONNECTION?');
+                    if (confirmed) {
+                        // In a real app, this would close the window
+                        // For browser, redirect to a blank page or attempt close
+                        window.close();
+                    }
+                }
+            },
+            startDrag(e) {
+                // In Electron, this would trigger window drag
+                if (window.electronAPI) {
+                    window.electronAPI.startDrag(e);
+                }
+            },
+        };
+
+        // ═════════════════════════════════════════════
+        // SECTION 2 — ORb CLICK HANDLER
+        // ═════════════════════════════════════════════
+        let clickTimer = null;
+        D.orb.addEventListener('click', () => {
+            if (clickTimer) clearTimeout(clickTimer);
+            // Ripple effect
+            const ripple = document.createElement('div');
+            ripple.style.cssText = 'position:absolute;top:50%;left:50%;width:10px;height:10px;border-radius:50%;background:rgba(0,204,255,0.5);transform:translate(-50%,-50%);animation:rippleEffect 0.8s ease-out;pointer-events:none;';
+            const rippleStyle = document.createElement('style');
+            rippleStyle.textContent = '@keyframes rippleEffect{0%{width:10px;height:10px;opacity:0.6}50%{width:400px;height:400px;opacity:0.2}100%{width:500px;height:500px;opacity:0}}';
+            document.head.appendChild(rippleStyle);
+            D.orbWrapper.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 800);
+            setTimeout(() => rippleStyle.remove(), 800);
+
+            if (STATE.orb === 'listening') {
+                OrbController.stopListening();
+            } else {
+                OrbController.startListening();
+            }
+        });
+        D.orb.addEventListener('mouseenter', () => {
+            D.orb.style.cursor = 'pointer';
+        });
+        D.transmitBtn.addEventListener('click', () => ultron.transmit());
+        D.micBtn.addEventListener('click', () => ultron.micInput());
+
+        // File input change
+        D.fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                ultron.loadFile(e.target.files[0]);
+            }
+        });
+
+        // ═════════════════════════════════════════════
+        // INITIALIZE
+        // ═════════════════════════════════════════════
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ensure PDF.js is configured
+            if (window.pdfjsLib) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
+            ultron.init();
+            OrbController.setState('idle');
+        });
+    </script>
+</body>
+</html>

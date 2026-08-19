@@ -1,0 +1,26 @@
+[2026-08-02 15:59:00] [environment] [PASSED] Python 3.10.10 venv, Ollama 0.23.4, Tesseract OK, Chrome OK
+[2026-08-02 16:05:00] [dependencies] [FAILED] pip install failed: stale CURL_CA_BUNDLE -> D:\Postgresql\ssl\certs\ca-bundle.crt
+[2026-08-02 16:08:00] [dependencies] [FIXED] unset CURL_CA_BUNDLE/OPENSSL_CONF; all 20 packages installed; runtime scrub added to settings.py
+[2026-08-02 16:10:00] [ollama-model] [PASSED] qwen2.5:3b pulled
+[2026-08-02 16:12:00] [config/settings.py] [PASSED] built
+[2026-08-02 16:15:00] [voice/speaker.py] [PASSED] spoke "JARVIS online" via pyttsx3
+[2026-08-02 16:20:00] [files/manager.py] [PASSED] created + trashed temp folder on Desktop
+[2026-08-02 16:22:00] [system/os_control.py] [FAILED] pycaw 20251023 new API: AudioDevice has no Activate
+[2026-08-02 16:23:00] [system/os_control.py] [FIXED] handle wrapped COM device (_dev); volume read 60%
+[2026-08-02 16:24:00] [control/mouse.py] [PASSED] cursor moved to screen center (960,600)
+[2026-08-02 16:24:30] [control/keyboard.py] [PASSED] module import OK
+[2026-08-02 16:30:00] [control/screen.py] [PASSED] screenshot + OCR found 144 words
+[2026-08-02 16:32:00] [brain/interpreter.py] [PASSED] "open Chrome" -> open_app/Chrome via qwen2.5:3b
+[2026-08-02 16:33:00] [control/apps.py] [PASSED] opened and closed Notepad
+[2026-08-02 16:34:00] [control/browser.py] [FAILED] UnicodeEncodeError printing page text (cp1252 console)
+[2026-08-02 16:35:00] [control/browser.py] [FIXED] utf-8 stream reconfigure in settings; google.com loaded + read + closed
+[2026-08-02 16:36:00] [voice/listener.py] [PASSED] 3s mic capture + whisper transcription pipeline OK (silent room -> empty transcript, conf 0.0, as expected)
+[2026-08-02 16:36:30] [main.py] [PASSED] end-to-end --once "what time is it"
+[2026-08-02 16:37:00] [integration] [PASSED] 5/5: open Notepad, type Hello from JARVIS, screenshot, close Notepad, what time is it
+[2026-08-02 16:40:00] [brain/interpreter.py] [FAILED] qwen2.5:3b drops targets, flips volume sign, misroutes "go to X" as search
+[2026-08-02 16:45:00] [brain/interpreter.py] [FIXED] repair layer: param-key rescue, rule-parser cross-check, deterministic delta signs, navigation-verb override, type_text field swap
+[2026-08-02 16:50:00] [files/manager.py] [FAILED] "to Documents/x" dest created relative ./Documents under CWD
+[2026-08-02 16:52:00] [files/manager.py] [FIXED] resolve_dir strips filename part, anchors unknown names to user home; move verified into real Documents
+[2026-08-02 16:55:00] [main.py] [FIXED] "open chrome" routes through Selenium so follow-up commands control the same window
+[2026-08-02 16:57:00] [integration] [PASSED] compound "open chrome and go to youtube", scroll, back, close; file move; list folder; date; battery
+[2026-08-02 17:00:00] [deliverables] [PASSED] requirements.txt (83 pinned), README.md, run_jarvis.bat
