@@ -1,0 +1,59 @@
+"""
+Feature-specific vision workflows for ULTRON AI
+"""
+
+from .workflows import (
+    YouTubeWorkflow,
+    SpotifyWorkflow,
+    WhatsAppWorkflow,
+    NotepadWorkflow,
+    WebBrowserWorkflow,
+    SystemSettingsWorkflow,
+    youtube_search,
+    youtube_play_pause,
+    youtube_like,
+    spotify_search,
+    spotify_play_pause,
+    spotify_next,
+    spotify_previous,
+    spotify_shuffle,
+    whatsapp_search_contact,
+    whatsapp_select_contact,
+    whatsapp_send_message,
+    notepad_write,
+    notepad_save,
+    browser_navigate,
+    browser_click,
+    wifi_toggle,
+    bluetooth_toggle,
+    set_system_volume,
+    set_screen_brightness
+)
+
+__all__ = [
+    "YouTubeWorkflow",
+    "SpotifyWorkflow",
+    "WhatsAppWorkflow",
+    "NotepadWorkflow",
+    "WebBrowserWorkflow",
+    "SystemSettingsWorkflow",
+    "youtube_search",
+    "youtube_play_pause",
+    "youtube_like",
+    "spotify_search",
+    "spotify_play_pause",
+    "spotify_next",
+    "spotify_previous",
+    "spotify_shuffle",
+    "whatsapp_search_contact",
+    "whatsapp_select_contact",
+    "whatsapp_send_message",
+    "notepad_write",
+    "notepad_save",
+    "browser_navigate",
+    "browser_click",
+    "wifi_toggle",
+    "bluetooth_toggle",
+    "set_system_volume",
+    "set_screen_brightness"
+]

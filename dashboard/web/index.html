@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>J.A.R.V.I.S</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <!-- Top info bar -->
+  <header class="topbar glass">
+    <div class="clock-block">
+      <div id="clock">--:--</div>
+      <div id="date">Loading…</div>
+    </div>
+    <div class="brand">J.A.R.V.I.S</div>
+    <div class="info-block">
+      <div class="info-item" id="weather" title="Weather">
+        <span class="icon" id="weather-icon">⛅</span><span id="weather-text">--°</span>
+      </div>
+      <div class="info-item" id="location" title="Location">
+        <span class="icon">📍</span><span id="location-text">Locating…</span>
+      </div>
+      <div class="info-item" id="battery" title="Battery">
+        <span class="icon" id="battery-icon">🔋</span><span id="battery-text">--%</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Center orb -->
+  <main class="stage">
+    <canvas id="orb" width="420" height="420"></canvas>
+    <div id="status-label">IDLE</div>
+  </main>
+
+  <!-- Transcript + command box -->
+  <footer class="bottom">
+    <div id="chat" class="chat"></div>
+    <div class="cmdbar glass">
+      <input id="cmd" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Type a command…  (e.g. open spotify · play the 3rd song from my chill playlist · stop)">
+      <button id="send" title="Send">➤</button>
+      <button id="stopbtn" title="Stop JARVIS immediately">■</button>
+    </div>
+  </footer>
+
+<script src="app.js"></script>
+</body>
+</html>
